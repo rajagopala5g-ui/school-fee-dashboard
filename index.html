@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Fee Ledger Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for better readability and UI */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .data-card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e2e8f0;
+        }
+        .sticky-summary {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .multi-select-list {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+        }
+        .selected-box {
+            min-height: 100px;
+            max-height: 150px;
+            overflow-y: auto;
+            background-color: #f0fdf4; /* Light green background */
+            border: 2px solid #34d399; /* Green border */
+        }
+        /* Custom styling for the student list items */
+        .student-select-item:hover {
+            background-color: #eef2ff; /* indigo-50 */
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-6 border-b pb-2">Fee Ledger Maintenance App</h1>
+
+        <section class="mb-8 p-6 bg-white rounded-xl data-card">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">1. Total Amount Received (Overall)</h2>
+            <div id="total-received" class="text-5xl font-extrabold text-indigo-600">
+                Loading...
+            </div>
+            <p class="text-sm text-gray-500 mt-2">Sum of all transactions in the ledger (Amounts are in thousands).</p>
+        </section>
+
+        <section class="mb-8 p-6 bg-white rounded-xl data-card">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">2. Amount Received - Class Wise</h2>
+            <div id="class-wise-totals">
+                <p class="text-gray-500">Loading data...</p>
+            </div>
+        </section>
+
+        <section class="mb-8 p-6 bg-white rounded-xl data-card">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">3. Amount Received - Student Wise</h2>
+
+            <div class="mb-4">
+                <label for="class-select" class="block text-sm font-medium text-gray-700 mb-1">Select Class (Step 1)</label>
+                <select id="class-select" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">-- Choose a Class --</option>
+                </select>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">Students in Selected Class (Step 2)</h3>
+                    <div id="student-list-container" class="multi-select-list p-3 rounded-lg bg-gray-50">
+                        <p class="text-gray-500">Please select a class first.</p>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">Selected Students (Step 3)</h3>
+                    <div id="selected-students-box" class="selected-box p-3 rounded-lg">
+                        <p class="text-gray-600">No students selected.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8">
+                <div class="sticky-summary bg-indigo-50 p-4 rounded-xl mb-6 flex justify-between items-center data-card">
+                    <span class="text-xl font-medium text-indigo-700">Total Fee Paid by Selected Students:</span>
+                    <span id="student-total-sum" class="text-3xl font-bold text-indigo-800">
+                        ₹0.00
+                    </span>
+                </div>
+
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">Detailed Payment History for Selected Students (Step 5)</h3>
+                <div class="overflow-x-auto bg-white rounded-xl data-card">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bill No.</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student Name</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="student-transaction-table" class="bg-white divide-y divide-gray-200">
+                            <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Select students to view transactions.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // *** IMPORTANT: This is the published CSV link for your Google Sheet. ***
+        // This is where the data is fetched from.
+        const CSV_FILE_ID = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6lC-c6vXp_iH61m4N4e-kR1y_05bX9_oY2t7zR8O1FpXj_7Dk0Jz1j0zB1qK0R0X9/pub?gid=1566903352&single=true&output=csv"; 
+
+        let LEDGER_DATA = [];
+        let classTotals = {};
+        let allClasses = [];
+        let allStudentsByClass = {};
+        let selectedStudents = [];
+
+        /**
+         * Utility function to format numbers as currency (Indian Rupees).
+         */
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                minimumFractionDigits: 2,
+            }).format(amount);
+        }
+
+        /**
+         * Parses the raw CSV string into a structured JavaScript array.
+         */
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\r\n').filter(line => line.trim() !== '');
+            if (lines.length < 2) return [];
+            
+            // Your sheet has two header lines, so we skip the first one.
+            const headerLine = lines[1];
+            const dataStartLine = 2;
+            
+            const rawHeaders = headerLine.split(',').map(h => h.trim());
+            
+            // Map the original header (with spaces/caps) to the clean key used in the app
+            const headerMap = {
+                'Bill No.': 'Bill No.',
+                'Class': 'Class',
+                'Student Name CAPZ': 'Student Name',
+                'Amount ': 'Amount', // Note the space after "Amount"
+                'Date': 'Date'
+            };
+            
+            // Find the indices of the required columns in the CSV
+            const indices = {};
+            for (const rawHeader in headerMap) {
+                const index = rawHeaders.indexOf(rawHeader);
+                if (index > -1) {
+                    indices[headerMap[rawHeader]] = index;
+                }
+            }
+
+            const data = [];
+            for (let i = dataStartLine; i < lines.length; i++) {
+                // Simple split by comma. 
+                const values = lines[i].split(','); 
+                
+                // Basic check to ensure we have enough columns for the indexed keys
+                if (values.length > Math.max(...Object.values(indices).filter(i => i !== undefined))) {
+                    const record = {};
+                    
+                    // Extract and clean values for required columns using their indices
+                    const billNoStr = values[indices['Bill No.']] ? values[indices['Bill No.']].trim() : '';
+                    record['Bill No.'] = parseInt(billNoStr, 10) || null;
+                    
+                    record['Class'] = values[indices['Class']] ? values[indices['Class']].trim() : '';
+                    record['Student Name'] = values[indices['Student Name']] ? values[indices['Student Name']].trim() : '';
+                    
+                    // Column G: Amount. Multiply by 1000 as requested (5 means 5000)
+                    const amountStr = values[indices['Amount']] ? values[indices['Amount']].trim() : '0';
+                    record['Amount'] = (parseFloat(amountStr) || 0) * 1000; 
+                    
+                    record['Date'] = values[indices['Date']] ? values[indices['Date']].trim() : '';
+                    
+                    // Only include valid payment records that have a class, a student name, and a non-zero amount
+                    if (record.Class && record['Amount'] > 0 && record['Student Name']) {
+                        data.push(record);
+                    }
+                }
+            }
+            return data;
+        }
+
+
+        // --- Core Data Processing Functions ---
+
+        /**
+         * Calculates the total amount received from all transactions (Feature 1).
+         */
+        function calculateOverallTotal() {
+            const total = LEDGER_DATA.reduce((sum, record) => sum + record.Amount, 0);
+            const totalElement = document.getElementById('total-received');
+            if (totalElement) {
+                totalElement.textContent = formatCurrency(total);
+            }
+        }
+
+        /**
+         * Calculates the total amount received per class (Feature 2).
+         */
+        function calculateClassWiseTotals() {
+            const totals = {};
+            const uniqueClasses = new Set();
+            allStudentsByClass = {}; // Reset student map
+
+            LEDGER_DATA.forEach(record => {
+                const className = record.Class;
+                const studentName = record['Student Name'];
+                if (!className) return;
+
+                uniqueClasses.add(className);
+                totals[className] = (totals[className] || 0) + record.Amount;
+
+                // Group unique students by class for the dropdown
+                if (!allStudentsByClass[className]) {
+                    allStudentsByClass[className] = new Set();
+                }
+                allStudentsByClass[className].add(studentName);
+            });
+
+            classTotals = totals;
+            
+            // Convert student sets to sorted arrays
+            for (const className in allStudentsByClass) {
+                allStudentsByClass[className] = Array.from(allStudentsByClass[className]).sort();
+            }
+
+            // Sort classes for display, putting non-numeric classes (like N, L, U) after numeric ones
+            allClasses = Array.from(uniqueClasses).sort((a, b) => {
+                const isNumericA = /^\d+$/.test(a);
+                const isNumericB = /^\d+$/.test(b);
+
+                if (isNumericA && isNumericB) {
+                    return parseInt(a) - parseInt(b);
+                }
+                if (isNumericA) return -1;
+                if (isNumericB) return 1;
+                return a.localeCompare(b);
+            });
+            renderClassWiseTable();
+        }
+
+        /**
+         * Renders the pivot table for class-wise totals (Feature 2).
+         */
+        function renderClassWiseTable() {
+            const container = document.getElementById('class-wise-totals');
+            if (!container) return;
+            
+            if (allClasses.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">No class data found.</p>';
+                return;
+            }
+
+            let html = `
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-4">
+            `;
+
+            allClasses.forEach(className => {
+                const total = classTotals[className] || 0;
+                html += `
+                    <div class="p-4 bg-indigo-50 border border-indigo-200 rounded-lg text-center hover:shadow-lg transition">
+                        <div class="text-sm font-medium text-indigo-600">Class ${className}</div>
+                        <div class="text-xl font-bold text-indigo-800">${formatCurrency(total)}</div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        /**
+         * Populates the class dropdown and pre-calculates the student list (Feature 3, Step 1).
+         */
+        function populateClassSelect() {
+            const select = document.getElementById('class-select');
+            if (!select) return;
+
+            select.innerHTML = '<option value="">-- Choose a Class --</option>'; // Clear existing options
+
+            allClasses.forEach(className => {
+                const option = document.createElement('option');
+                option.value = className;
+                option.textContent = `Class ${className}`;
+                select.appendChild(option);
+            });
+
+            select.addEventListener('change', updateStudentList);
+        }
+
+        /**
+         * Filters and displays the list of students for the selected class (Feature 3, Step 2).
+         */
+        function updateStudentList() {
+            const selectedClass = document.getElementById('class-select').value;
+            const container = document.getElementById('student-list-container');
+            if (!container) return;
+
+            // Reset selection state when class changes
+            selectedStudents = [];
+            renderSelectedStudentsBox();
+            renderStudentSummary();
+            container.innerHTML = ''; // Clear student list
+
+            if (!selectedClass) {
+                container.innerHTML = '<p class="text-gray-500">Please select a class first.</p>';
+                return;
+            }
+
+            const students = allStudentsByClass[selectedClass] || [];
+
+            if (students.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">No students found in this class.</p>';
+                return;
+            }
+
+            students.forEach(studentName => {
+                const studentId = `student-${selectedClass}-${studentName.replace(/[^a-zA-Z0-9]/g, '-')}`; 
+                const div = document.createElement('div');
+                // Add student-select-item class for hover effect
+                div.className = 'student-select-item flex items-center space-x-2 py-1 px-2 cursor-pointer rounded-md transition duration-150';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = studentId;
+                checkbox.className = 'h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500';
+                checkbox.value = studentName;
+                checkbox.checked = selectedStudents.includes(studentName);
+                checkbox.addEventListener('change', toggleStudentSelection);
+                
+                const label = document.createElement('label');
+                label.htmlFor = studentId;
+                label.textContent = studentName;
+                label.className = 'text-sm text-gray-700 flex-grow cursor-pointer';
+
+                // Add click listener to the whole div to toggle the checkbox
+                div.addEventListener('click', (e) => {
+                    // Prevent the click event on the checkbox itself from firing twice
+                    if (e.target !== checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                        checkbox.dispatchEvent(new Event('change'));
+                    }
+                });
+
+                div.appendChild(checkbox);
+                div.appendChild(label);
+                container.appendChild(div);
+            });
+        }
+
+        /**
+         * Handles student multi-selection and updates the summary (Feature 3, Step 3 & 4).
+         */
+        function toggleStudentSelection(event) {
+            const studentName = event.target.value;
+            const isChecked = event.target.checked;
+
+            if (isChecked && !selectedStudents.includes(studentName)) {
+                selectedStudents.push(studentName);
+            } else if (!isChecked && selectedStudents.includes(studentName)) {
+                selectedStudents = selectedStudents.filter(name => name !== studentName);
+            }
+            
+            // Re-render both the selected box and the transaction table
+            renderSelectedStudentsBox();
+            renderStudentSummary();
+        }
+
+        /**
+         * Renders the box showing selected students (Feature 3, Step 3).
+         */
+        function renderSelectedStudentsBox() {
+            const box = document.getElementById('selected-students-box');
+            if (!box) return;
+
+            if (selectedStudents.length === 0) {
+                box.innerHTML = '<p class="text-gray-600">No students selected.</p>';
+            } else {
+                box.innerHTML = selectedStudents.map(name => 
+                    `<span class="inline-block bg-green-200 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded-full mr-2 mb-2">${name}</span>`
+                ).join('');
+            }
+        }
+
+        /**
+         * Filters transactions, calculates total, and renders the detailed table (Feature 3, Steps 4, 5, 6).
+         */
+        function renderStudentSummary() {
+            const tableBody = document.getElementById('student-transaction-table');
+            const totalSumElement = document.getElementById('student-total-sum');
+            
+            if (!tableBody || !totalSumElement) return;
+
+            if (selectedStudents.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Select students to view transactions.</td></tr>';
+                totalSumElement.textContent = formatCurrency(0);
+                return;
+            }
+
+            // Filter transactions for selected students
+            const filteredTransactions = LEDGER_DATA.filter(record => 
+                selectedStudents.includes(record['Student Name'])
+            ).sort((a, b) => {
+                // Sort by date, falling back to Bill No.
+                const dateA = new Date(a.Date);
+                const dateB = new Date(b.Date);
+                if (dateA - dateB !== 0) return dateA - dateB;
+                return (a['Bill No.'] || 0) - (b['Bill No.'] || 0);
+            });
+
+            // Calculate the total sum (Step 4 & 6)
+            const totalAmount = filteredTransactions.reduce((sum, record) => sum + record.Amount, 0);
+            totalSumElement.textContent = formatCurrency(totalAmount);
+
+            // Render the detailed table (Step 5)
+            let tableHtml = '';
+            if (filteredTransactions.length === 0) {
+                 tableHtml = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">No payments recorded for the selected students.</td></tr>';
+            } else {
+                filteredTransactions.forEach(record => {
+                    tableHtml += `
