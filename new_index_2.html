@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>School Fee Ledger Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- PapaParse -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body class="bg-light">
+
+<div class="container my-4">
+  <h1 class="text-center mb-4">📊 School Fee Ledger Dashboard</h1>
+
+  <!-- Summary -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card text-bg-success">
+        <div class="card-body">
+          <h5>Total Amount Received</h5>
+          <p id="totalAmount" class="fs-4">Loading...</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card text-bg-info">
+        <div class="card-body">
+          <h5>Class-wise Collection</h5>
+          <canvas id="classChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Student-wise -->
+  <div class="card mb-4">
+    <div class="card-header">Amount Received - Student Wise</div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label for="classSelect" class="form-label">Select Class</label>
+        <select id="classSelect" class="form-select"></select>
+      </div>
+      <div class="mb-3">
+        <label for="studentSelect" class="form-label">Select Students</label>
+        <select id="studentSelect" class="form-select" multiple></select>
+      </div>
+      <div class="mb-3">
+        <button class="btn btn-primary" onclick="showStudentData()">Show Data</button>
+      </div>
+      <div id="selectedBox" class="mb-3"></div>
+      <div class="table-responsive">
+        <table class="table table-striped" id="studentTable">
+          <thead class="table-dark">
+            <tr>
+              <th>Bill No</th>
+              <th>Class</th>
+              <th>Student Name</th>
+              <th>Amount</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <h5 class="mt-3">Total Fee Paid: <span id="studentTotal">0</span></h5>
+    </div>
+  </div>
+</div>
+
+<script>
+const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSSZ0xegXaOSZc-3xq6VAydyN04-x77OXm3uzK6YFMhTMCUqGFme9_mFKlokYl49Yc4RTZXR8myjZrI/pub?gid=1566903352&single=true&output=csv";
+let ledgerData = [];
+let classMap = {};
+
+Papa.parse(sheetUrl, {
+  download: true,
+  header: true,
+  complete: function(results) {
+    ledgerData = results.data.filter(r => r["Bill No."]);
+    processData();
+  },
+  error: function(err) {
+    document.getElementById("totalAmount").innerText = "Error loading sheet!";
+    console.error(err);
+  }
+});
+
+function normalizeAmount(val) {
+  if (!val) return 0;
+  return parseFloat(val) * 1000; // "5" means 5000
+}
+
+function processData() {
+  // Total
+  let total = ledgerData.reduce((sum, r) => sum + normalizeAmount(r["Amount "]), 0);
+  document.getElementById("totalAmount").innerText = "₹ " + total.toLocaleString();
+
+  // Class-wise
+  classMap = {};
+  ledgerData.forEach(r => {
+    let cls = r["Class"] || "Unknown";
+    let amt = normalizeAmount(r["Amount "]);
+    if (!classMap[cls]) classMap[cls] = 0;
+    classMap[cls] += amt;
+  });
+
+  new Chart(document.getElementById("classChart"), {
+    type: "bar",
+    data: {
+      labels: Object.keys(classMap),
+      datasets: [{
+        label: "Amount Received",
+        data: Object.values(classMap),
+        backgroundColor: "#17a2b8"
+      }]
+    }
+  });
+
+  // Populate class dropdown
+  let classSelect = document.getElementById("classSelect");
+  Object.keys(classMap).forEach(cls => {
+    let opt = document.createElement("option");
+    opt.value = cls;
+    opt.text = cls;
+    classSelect.add(opt);
+  });
+}
+
+function showStudentData() {
+  let cls = document.getElementById("classSelect").value;
+  let studentSelect = document.getElementById("studentSelect");
+  let selected = Array.from(studentSelect.selectedOptions).map(o => o.value);
+
+  // Show selected names
+  document.getElementById("selectedBox").innerHTML = "Selected: " + selected.join(", ");
+
+  // Filter rows
+  let rows = ledgerData.filter(r => r["Class"] === cls && selected.includes(r["Student Name CAPZ"]));
+  let tbody = document.querySelector("#studentTable tbody");
+  tbody.innerHTML = "";
+  let total = 0;
+  rows.forEach(r => {
+    let amt = normalizeAmount(r["Amount "]);
+    total += amt;
+    tbody.innerHTML += `
+      <tr>
+        <td>${r["Bill No."]}</td>
+        <td>${r["Class"]}</td>
+        <td>${r["Student Name CAPZ"]}</td>
+        <td>₹${amt.toLocaleString()}</td>
+        <td>${r["Date"]}</td>
+      </tr>`;
+  });
+  document.getElementById("studentTotal").innerText = "₹ " + total.toLocaleString();
+}
+
+// Update student list when class changes
+document.getElementById("classSelect").addEventListener("change", function() {
+  let cls = this.value;
+  let students = ledgerData.filter(r => r["Class"] === cls).map(r => r["Student Name CAPZ"]);
+  let studentSelect = document.getElementById("studentSelect");
+  studentSelect.innerHTML = "";
+  students.forEach(name => {
+    let opt = document.createElement("option");
+    opt.value = name;
+    opt.text = name;
+    studentSelect.add(opt);
+  });
+});
+</script>
+
+</body>
+</html>
