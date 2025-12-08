@@ -5,89 +5,182 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Fee Ledger Dashboard</title>
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 20px; background-color: #f4f7f6; }
-        .container { max-width: 1400px; margin: auto; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f0f2f5; }
+        .container { max-width: 1000px; margin: auto; }
         h1 { color: #007bff; text-align: center; margin-bottom: 30px; }
-        .summary-card { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .total-amount { font-size: 2.5em; font-weight: bold; color: #28a745; text-align: center; }
-        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-        .control-panel, .class-summary { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
-        select, button { padding: 10px; margin-top: 5px; border-radius: 4px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
-        .list-box { height: 200px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; margin-top: 10px; background-color: #f9f9f9; }
-        .selected-students-box { margin-top: 15px; padding: 10px; border: 1px dashed #007bff; min-height: 50px; background-color: #e9f5ff; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #fff; font-size: 0.9em; }
-        th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+        
+        /* --- Vertical Button/Toggle Section Styles --- */
+        .toggle-options { 
+            display: flex; 
+            flex-direction: column; /* Vertical arrangement */
+            gap: 10px; 
+            margin-bottom: 30px; 
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .toggle-btn { 
+            padding: 18px 25px; 
+            border: 2px solid #ddd;
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 1.15em; 
+            font-weight: 600; 
+            text-align: left;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+        }
+        .toggle-btn .icon { font-size: 1.5em; margin-right: 15px; color: #007bff; }
+        .toggle-btn.active { 
+            background-color: #007bff; 
+            color: white; 
+            border-color: #007bff;
+            box-shadow: 0 4px 8px rgba(0, 123, 255, 0.4); 
+            transform: translateY(-2px);
+        }
+        .toggle-btn.active .icon { color: white; }
+        .toggle-btn:not(.active) { background-color: #f8f9fa; color: #343a40; }
+        .toggle-btn:hover:not(.active) { background-color: #e9ecef; border-color: #adb5bd; }
+
+        /* --- Content Sections --- */
+        .content-section { 
+            display: none; 
+            padding: 30px; 
+            background-color: #fff; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            min-height: 250px;
+            margin-top: 20px;
+        }
+        .content-section.active { display: block; }
+        
+        /* --- Total Collection Card Styles (Retained Logic/Modified Presentation) --- */
+        .summary-card { padding: 25px; border-radius: 10px; border: 3px dashed #ffc107; cursor: pointer; }
+        .summary-card h2 { margin-top: 0; color: #6c757d; }
+        .total-amount { font-size: 1.8em; font-weight: bold; color: #28a745; text-align: center; }
+        .masked-amount { color: #dc3545; font-size: 2.5em; font-weight: bold; letter-spacing: 5px; text-align: center; }
+
+        /* --- Class/Student Section Styles (Retained) --- */
+        .dashboard-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 30px; 
+            margin-top: 20px;
+        }
+        .control-panel, .transaction-details { padding: 0; background: none; box-shadow: none; }
+        select, button { padding: 12px; margin-top: 8px; border-radius: 6px; border: 1px solid #ced4da; width: 100%; box-sizing: border-box; }
+        button { background-color: #28a745; color: white; }
+        
+        .list-box { height: 200px; overflow-y: scroll; border: 1px solid #007bff; padding: 10px; margin-top: 10px; background-color: #f0f8ff; border-radius: 6px; }
+        .list-box div { margin-bottom: 5px; }
+
+        .selected-students-box { margin-top: 15px; padding: 10px; border: 1px dashed #007bff; min-height: 50px; background-color: #e9f5ff; border-radius: 6px; font-weight: 500;}
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #fff; font-size: 0.9em; border: 1px solid #dee2e6; }
+        th, td { padding: 10px; border: 1px solid #dee2e6; text-align: left; }
         th { background-color: #007bff; color: white; }
-        .final-total { font-size: 1.5em; font-weight: bold; color: #dc3545; text-align: right; margin-top: 15px; padding: 10px; border-top: 2px solid #dc3545; }
+        .final-total { font-size: 1.6em; font-weight: bold; color: #dc3545; text-align: right; margin-top: 20px; padding: 10px; border-top: 3px solid #dc3545; background-color: #fff3f3; border-radius: 6px; }
         .error { color: red; text-align: center; margin-top: 20px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🏛️ School Fee Ledger Dashboard</h1>
+    <h1>🏫 School Fee Ledger Dashboard</h1>
 
-    <div class="summary-card">
-        <h2>Total Amount Received (All Payments)</h2>
-        <div id="total-amount-received" class="total-amount">Loading...</div>
+    <div class="toggle-options">
+        <button class="toggle-btn" id="btn-total" onclick="showSection('total', 'btn-total')">
+            <span class="icon">💰</span> View Full Collection
+        </button>
+        <button class="toggle-btn" id="btn-class" onclick="showSection('class', 'btn-class')">
+            <span class="icon">📊</span> View Collection Class Wise
+        </button>
+        <button class="toggle-btn" id="btn-student" onclick="showSection('student', 'btn-student')">
+            <span class="icon">🧑‍🎓</span> View Individual Student Wise
+        </button>
     </div>
 
-    <div class="dashboard-grid">
-        <div class="class-summary">
-            <h2>Amount Received - Class Wise</h2>
-            <div id="class-wise-summary">Loading...</div>
+    <div id="section-total" class="content-section active">
+        <div class="summary-card" onclick="toggleTotalAmount()">
+            <h2>Total Amount Received (All Payments) <span style="font-size: 0.8em; color: #6c757d;">🔒 Click to Reveal</span></h2>
+            <div id="total-amount-received" class="masked-amount">₹ XXXXXXXX.XX</div>
         </div>
-        
-        <div class="control-panel">
-            <h2>Amount Received - Student Wise Query</h2>
-            
-            <label for="class-select">1. Select Class:</label>
-            <select id="class-select" onchange="handleClassChange()">
-                <option value="">-- Select a Class --</option>
-            </select>
+    </div>
 
-            <label for="student-select" style="margin-top: 15px; display: block;">2. Select Student(s):</label>
-            <div id="student-list" class="list-box">
-                <p>Select a class first.</p>
+    <div id="section-class" class="content-section">
+        <h2 style="color: #28a745;">Class Wise Fee Collection Summary (₹)</h2>
+        <div id="class-wise-summary">Loading...</div>
+    </div>
+
+    <div id="section-student" class="content-section">
+        <h2 style="color: #007bff; text-align: center; margin-bottom: 25px;">Individual Student Transaction Query</h2>
+        <div class="dashboard-grid">
+            
+            <div class="control-panel">
+                <h3 style="color: #343a40; margin-top: 0;">1. Student Selection</h3>
+                
+                <label for="class-select">Select Class:</label>
+                <select id="class-select" onchange="handleClassChange()">
+                    <option value="">-- Select a Class --</option>
+                </select>
+
+                <label for="student-select" style="margin-top: 15px; display: block;">Select Student(s):</label>
+                <div id="student-list" class="list-box">
+                    <p>Select a class first.</p>
+                </div>
+                
+                <label style="margin-top: 15px; display: block;">Currently Selected:</label>
+                <div id="selected-students-box" class="selected-students-box">None selected.</div>
+
+                <button onclick="handleStudentSelection()" style="margin-top: 25px;">View Transactions & Total</button>
             </div>
             
-            <label style="margin-top: 15px; display: block;">Selected Students:</label>
-            <div id="selected-students-box" class="selected-students-box">None selected.</div>
-
-            <button onclick="handleStudentSelection()" style="margin-top: 15px; background-color: #007bff; color: white;">3. View Transactions & Total</button>
+            <div class="transaction-details">
+                <h3 style="color: #dc3545; margin-top: 0;">2. Transaction Details (A-L)</h3>
+                <div id="transaction-results">
+                    <p>Select students and click 'View Transactions' to see details.</p>
+                </div>
+            </div>
         </div>
-    </div>
-
-    <h2>Detailed Transaction View (Columns A-L)</h2>
-    <div id="transaction-results">
-        <p>Select students and click 'View Transactions' to see details.</p>
     </div>
 </div>
 
 <script>
-    // CSV Public URL (your provided link)
+    // CSV Public URL
     const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSSZ0xegXaOSZc-3xq6VAydyN04-x77OXm3uzK6YFMhTMCUqGFme9_mFKlokYl49Yc4RTZXR8myjZrI/pub?gid=1566903352&single=true&output=csv';
 
-    // *** COLUMN INDICES (0-based) based on your updated structure ***
+    // *** COLUMN INDICES (0-based) ***
     const COL = {
-        BILL_NO: 0,
-        NEW_OR_RE: 1,
         CLASS: 2,
-        STUDENT_NAME: 4, // E
-        FATHER_NAME: 5, // F
-        AMOUNT: 6,      // G (This value is multiplied by 1000)
-        PAYMENT_MODE: 7, // H
-        OLD_BALANCE: 8, // I
-        ODD_CASH: 9,    // J
-        DATE: 10,       // K
-        // We display all columns up to index 11 (L)
-        MAX_DISPLAY_COL_INDEX: 11 
+        STUDENT_NAME: 4, 
+        AMOUNT: 6,       
+        MAX_DISPLAY_COL_INDEX: 11
     };
 
-    let allData = []; // To store all parsed data rows
-    let headers = []; // To store the header row
+    let allData = []; 
+    let headers = []; 
+    let isTotalAmountVisible = false; 
+    let calculatedTotalAmount = 0; 
 
-    // --- Core Data Fetching and Parsing ---
+    // --- Core Functions (No Logic Change) ---
+
+    function formatToIndianRupees(amount) {
+        if (typeof amount !== 'number') amount = parseFloat(amount) || 0;
+        
+        const [integerPart, decimalPart] = amount.toFixed(2).split('.');
+        
+        let lastThree = integerPart.substring(integerPart.length - 3);
+        let otherNumbers = integerPart.substring(0, integerPart.length - 3);
+        
+        if (otherNumbers !== '') {
+            lastThree = ',' + lastThree;
+        }
+        
+        const formattedOther = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",");
+        
+        return `${formattedOther}${lastThree}.${decimalPart}`;
+    }
 
     async function fetchData() {
         try {
@@ -98,6 +191,7 @@
             const csvText = await response.text();
             parseCSV(csvText);
             initializeDashboard();
+            showSection('total', 'btn-total'); 
         } catch (e) {
             document.querySelector('.container').innerHTML = `<p class="error">Failed to load data. Error: ${e.message}. Please ensure the sheet is published correctly.</p>`;
         }
@@ -107,32 +201,24 @@
         const rows = csv.split('\n').filter(row => row.trim() !== '');
         if (rows.length === 0) return;
         
-        // 1. Get Headers
         headers = rows[0].split(',').map(h => h.trim().replace(/"/g, ''));
         
-        // 2. Get Data Rows
         allData = rows.slice(1).map(row => {
             const values = row.split(',').map(v => v.trim().replace(/"/g, ''));
             
             return {
                 Class: values[COL.CLASS] || '',
                 StudentName: values[COL.STUDENT_NAME] || '',
-                // ** CRITICAL FIX: MULTIPLY AMOUNT (Column G) BY 1000 **
-                Amount: parseFloat(values[COL.AMOUNT]) * 1000 || 0, 
-                // ******************************************************
-                RowData: values // Store the entire row array for detailed table display
+                Amount: parseFloat(values[COL.AMOUNT]) * 1000 || 0, 
+                RowData: values 
             };
-        }).filter(item => item.Amount > 0 && item.Class && item.StudentName); 
+        }).filter(item => item.Amount > 0 && item.Class && item.StudentName); 
     }
 
-    // --- Dashboard Initializations (Feature 1 & 2) ---
-
     function initializeDashboard() {
-        // 1. Total Amount Received (Sum of G * 1000)
-        const totalAmount = allData.reduce((sum, item) => sum + item.Amount, 0);
-        document.getElementById('total-amount-received').textContent = `₹ ${totalAmount.toFixed(2)}`;
+        calculatedTotalAmount = allData.reduce((sum, item) => sum + item.Amount, 0);
 
-        // 2. Amount Received - Class Wise (Pivot Table Data)
+        // Class Wise Data
         const classMap = allData.reduce((map, item) => {
             map[item.Class] = (map[item.Class] || 0) + item.Amount;
             return map;
@@ -141,7 +227,8 @@
         let classHtml = '<table><tr><th>Class</th><th>Total Fees (₹)</th></tr>';
         const classes = Object.keys(classMap).sort();
         classes.forEach(cls => {
-            classHtml += `<tr><td>${cls}</td><td>${classMap[cls].toFixed(2)}</td></tr>`;
+            const formattedAmount = formatToIndianRupees(classMap[cls]);
+            classHtml += `<tr><td>${cls}</td><td>${formattedAmount}</td></tr>`;
         });
         classHtml += '</table>';
         document.getElementById('class-wise-summary').innerHTML = classHtml;
@@ -156,7 +243,39 @@
         });
     }
 
-    // --- Interactive Logic (Feature 3) ---
+    // --- Toggle Logic (No Logic Change) ---
+
+    function showSection(sectionId, buttonId) {
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
+        });
+        document.querySelectorAll('.toggle-btn').forEach(button => {
+            button.classList.remove('active');
+        });
+
+        document.getElementById(`section-${sectionId}`).classList.add('active');
+        document.getElementById(buttonId).classList.add('active');
+    }
+    
+    function toggleTotalAmount() {
+        const totalAmountDiv = document.getElementById('total-amount-received');
+        const header = totalAmountDiv.previousElementSibling;
+        
+        isTotalAmountVisible = !isTotalAmountVisible;
+        
+        if (isTotalAmountVisible) {
+            const formattedAmount = formatToIndianRupees(calculatedTotalAmount);
+            totalAmountDiv.textContent = `₹ ${formattedAmount}`;
+            totalAmountDiv.classList.add('total-amount');
+            totalAmountDiv.classList.remove('masked-amount');
+            header.innerHTML = 'Total Amount Received (All Payments) <span style="font-size: 0.8em; color: #28a745;">✅ Click to Hide</span>';
+        } else {
+            totalAmountDiv.textContent = '₹ XXXXXXXX.XX';
+            totalAmountDiv.classList.add('masked-amount');
+            totalAmountDiv.classList.remove('total-amount');
+            header.innerHTML = 'Total Amount Received (All Payments) <span style="font-size: 0.8em; color: #6c757d;">🔒 Click to Reveal</span>';
+        }
+    }
 
     function handleClassChange() {
         const selectedClass = document.getElementById('class-select').value;
@@ -170,7 +289,6 @@
             return;
         }
 
-        // Get unique student names for the selected class (E column)
         const studentsInClass = Array.from(
             new Set(allData
                 .filter(item => item.Class === selectedClass)
@@ -178,7 +296,6 @@
             )
         ).sort();
         
-        // Populate custom student list (checkboxes for multi-select)
         studentsInClass.forEach(name => {
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
@@ -219,7 +336,6 @@
             return;
         }
         
-        // Filter data for selected students
         const filteredData = allData.filter(item => 
             item.Class === selectedClass && selectedNames.includes(item.StudentName)
         );
@@ -229,40 +345,32 @@
             return;
         }
 
-        // Calculate total amount for selected students
         const finalTotal = filteredData.reduce((sum, item) => sum + item.Amount, 0);
 
-        // Build the results table (Columns A through L, indices 0-11)
-        let tableHtml = '<table>';
-        
-        // Table Header: Use the actual headers array, limiting it to L (index 11)
-        tableHtml += '<tr>';
+        let tableHtml = '<table><tr>';
         for (let i = 0; i <= COL.MAX_DISPLAY_COL_INDEX && i < headers.length; i++) {
             tableHtml += `<th>${headers[i] || 'Col ' + (i + 1)}</th>`;
         }
         tableHtml += '</tr>';
         
-        // Table Body
         filteredData.forEach(item => {
             tableHtml += '<tr>';
             const rowValues = item.RowData;
             for (let i = 0; i <= COL.MAX_DISPLAY_COL_INDEX; i++) {
                 let cellContent = rowValues[i] || ''; 
                 
-                // ** FIX: DISPLAY CORRECT AMOUNT (Column G) **
                 if (i === COL.AMOUNT) {
-                    // Use the already calculated and multiplied value from the item object (e.g., 20000.00)
-                    cellContent = `<strong>₹ ${item.Amount.toFixed(2)}</strong>`;
+                    const formattedAmount = formatToIndianRupees(item.Amount);
+                    cellContent = `<strong>₹ ${formattedAmount}</strong>`;
                 }
-                // *******************************************
                 tableHtml += `<td>${cellContent}</td>`;
             }
             tableHtml += '</tr>';
         });
         tableHtml += '</table>';
         
-        // Final Total
-        tableHtml += `<div class="final-total">TOTAL FEE PAID (Selected Students): ₹ ${finalTotal.toFixed(2)}</div>`;
+        const formattedFinalTotal = formatToIndianRupees(finalTotal);
+        tableHtml += `<div class="final-total">TOTAL FEE PAID (Selected Students): ₹ ${formattedFinalTotal}</div>`;
 
         resultsDiv.innerHTML = tableHtml;
     }
